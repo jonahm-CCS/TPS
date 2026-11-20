@@ -1,0 +1,99 @@
+.board-launch {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid #f88a35;
+  border-radius: 50%;
+  color: #f88a35;
+  background: #14243b;
+}
+.board-launch svg, .board-top svg { width: 24px; height: 24px; flex: none; }
+.board-launch.board-has-unread { box-shadow: 0 0 12px #ff8029d0; color: #ffad6f; }
+[data-board-count], .board-chat b {
+  border-radius: 999px;
+  padding: 2px 7px;
+  min-width: 22px;
+  color: #241505;
+  background: #ff9c50;
+  font-size: 12px;
+  text-align: center;
+}
+.board-launch [data-board-count] { position: absolute; top: -5px; right: -7px; }
+.board-inbox-link.board-has-unread { border-color: #f88a35; }
+#message-board {
+  width: min(1000px, calc(100vw - 28px));
+  max-height: 92dvh;
+  padding: 0;
+  border: 1px solid var(--line, #778391);
+  border-top: 3px solid #f88a35;
+  border-radius: 13px;
+  background: var(--card, var(--panel, Canvas));
+  color: var(--text, CanvasText);
+  overflow: auto;
+}
+#message-board::backdrop { background: #101a2ba6; }
+#message-board button { min-height: 38px; }
+#message-board h2, #message-board h3 { margin: 0; }
+#message-board [hidden] { display: none; }
+.board-top, .board-top > div, .board-sidebar-head, .board-thread-head, .board-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+}
+.board-top { background: #14243b; color: #fff; padding: 12px 18px; }
+.board-top svg { color: #ff9c50; }
+#board-close { width: 42px; font-size: 25px; padding: 0; }
+#board-error { padding: 8px 18px; color: #b84b16; font-weight: 700; }
+#board-error:empty { display: none; }
+.board-layout { display: grid; grid-template-columns: minmax(220px, 29%) minmax(0, 1fr); }
+.board-sidebar { border-right: 1px solid var(--line, #778391); padding: 14px; min-width: 0; }
+.board-search-label { display: block; margin-top: 12px; }
+.board-sidebar input, #message-board form input:not([type=checkbox]), #message-board form select, #message-board textarea {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 4px 0 8px;
+}
+#board-conversations, #board-target-options { overflow: auto; max-height: 55dvh; }
+.board-chat {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; padding: 8px; margin: 6px 0; gap: 8px; text-align: left;
+  overflow-wrap: anywhere;
+}
+.board-chat[aria-pressed=true] { border-color: #f88a35; box-shadow: inset 3px 0 #f88a35; }
+.board-chat small { display: block; margin-top: 2px; }
+#board-thread { min-width: 0; }
+.board-thread-head, #board-reply { padding: 10px 16px; }
+.board-thread-head { border-bottom: 1px solid var(--line, #778391); overflow-wrap: anywhere; }
+#board-posts { height: min(38dvh, 410px); min-height: 140px; overflow: auto; padding: 10px 16px; }
+.board-post { padding: 9px 10px; margin-bottom: 4px; border-bottom: 1px solid var(--line, #778391); }
+.board-post > div { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.board-post time { font-size: 0.8rem; opacity: 0.8; }
+.board-post p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0; }
+.board-own-post { border-left: 2px solid #f88a35; }
+.board-job-ref { display: inline-block; border: 1px solid var(--line, #778391); border-radius: 5px; padding: 3px 6px; }
+.board-empty { padding: 10px; opacity: 0.85; }
+#board-reply { border-top: 1px solid var(--line, #778391); }
+.board-emoji summary { cursor: pointer; }
+.board-emoji button { min-width: 38px; margin: 3px; padding: 4px; }
+.board-reply-options { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto; align-items: end; gap: 8px; }
+.board-reply-options label { min-width: 0; }
+.board-reply-options button { margin-bottom: 8px; }
+#board-create, #board-edit { max-width: 570px; padding: 16px; }
+#board-create label, #board-edit label { display: block; margin: 8px 0; }
+#board-target-options label { padding: 4px; }
+.board-actions { justify-content: flex-end; margin-top: 12px; }
+@media(max-width: 650px) {
+  .board-layout { grid-template-columns: 1fr; }
+  .board-sidebar { border-right: 0; border-bottom: 1px solid var(--line, #778391); }
+  #board-conversations { max-height: 23dvh; }
+  #board-posts { height: 30dvh; }
+  .board-reply-options { grid-template-columns: 1fr 1fr; }
+  .board-reply-options button { grid-column: 1 / -1; }
+}
