@@ -10,8 +10,8 @@ const nowInNorfolk = new Intl.DateTimeFormat('en-US', {
   timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
 });
 
-let context, session, refreshPromise, dialog;
-let sessionEpoch = 0;
+let context, dialog;
+let workspaceEpoch = 0;
 let conversations = [], canManage = false, selected = null, posts = [], historyFrom = null;
 let search = '', pendingDraft, loading = false, error = '', mode = 'board';
 let updateAfter = 0;
@@ -45,9 +45,11 @@ function updateCounters() {
 export function mountMessageBoard(next) {
   if (context?.key !== next?.key) {
     closeBoard();
-    sessionEpoch++;
-    session = null;
-    refreshPromise = null;
+    workspaceEpoch++;
+    mode = 'board';
+    selected = null;
+    posts = [];
+    historyFrom = null;
     conversations = [];
     canManage = false;
     pendingDraft = null;
@@ -56,13 +58,13 @@ export function mountMessageBoard(next) {
   }
   context = next;
   bindBoardTriggers();
+  if (next) refresh();
 }
 
-async function json(path, body, token) {
+async function json(path, body) {
   const response = await fetch(config.url + path, {
     method: 'POST',
-    headers: { apikey: config.key, 'Content-Type': 'application/json',
-      ...(token ? { Authorization: 'Bearer ' + token } : {}) },
+    headers: { apikey: config.key, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(15000),
   });
@@ -75,51 +77,14 @@ async function json(path, body, token) {
   return data;
 }
 
-function tokens(data) {
-  return { access: data.access_token, refresh: data.refresh_token, expires: Date.now() + data.expires_in * 1000 };
-}
-
-async function accessToken() {
-  const current = session;
-  if (!current) throw new Error('Sign in to Message Board.');
-  if (current.expires - Date.now() > 60000) return current.access;
-  if (refreshPromise) return refreshPromise;
-  const refresher = json('/auth/v1/token?grant_type=refresh_token', { refresh_token: current.refresh })
-    .then(data => {
-      if (session !== current) throw new Error('The Message Board session changed.');
-      session = tokens(data);
-      return session.access;
-    })
-    .catch(failure => {
-      if (session === current && (failure.status === 400 || failure.status === 401)) signOutBoard();
-      throw failure;
-    })
-    .finally(() => { if (refreshPromise === refresher) refreshPromise = null; });
-  refreshPromise = refresher;
-  return refresher;
-}
-
 async function boardRequest(action, args = {}) {
-  const activeContext = context?.key, epoch = sessionEpoch;
-  const token = await accessToken();
-  if (context?.key !== activeContext || epoch !== sessionEpoch) throw new Error('The Message Board workspace changed.');
-  return json('/rest/v1/rpc/tps_message_board', {
-    action, args: { ...args, employee: context.employee, number: context.number },
-  }, token);
-}
-
-function signOutBoard() {
-  sessionEpoch++;
-  session = null;
-  refreshPromise = null;
-  loading = false;
-  mode = 'board';
-  conversations = [];
-  selected = pendingDraft = null;
-  canManage = false;
-  posts = [];
-  updateCounters();
-  if (dialog?.open) render();
+  const station = context, epoch = workspaceEpoch;
+  if (!station) throw new Error('Open your TPS workspace to use Message Board.');
+  const result = await json('/rest/v1/rpc/tps_message_board', {
+    action, args: { ...args, badge: station.badge, number: station.number },
+  });
+  if (epoch !== workspaceEpoch) throw new Error('The TPS workspace changed.');
+  return result;
 }
 
 function openBoard() {
@@ -140,50 +105,11 @@ function closeBoard() { if (dialog?.open) dialog.close(); }
 
 function render() {
   if (!dialog?.open) return;
-  dialog.innerHTML = `<header class="board-top"><div>${icon}<h2 id="board-title">Message Board</h2></div><div>
-    ${session ? '<button type="button" id="board-signout">Sign out of board</button>' : ''}
-    <button type="button" id="board-close" aria-label="Close Message Board">×</button></div></header>
-    <div id="board-error" role="status">${escape(error)}</div>
-    ${session ? '<div id="board-content"></div>' : `<form id="board-signin">
-      <h3>Sign in to Message Board</h3><p>Use your verified work account linked to TPS.</p>
-      <label>Work email<input name="email" type="email" autocomplete="username" required></label>
-      <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
-      <button class="primary" type="submit">Sign in</button>
-    </form>`}`;
+  dialog.innerHTML = `<header class="board-top"><div>${icon}<h2 id="board-title">Message Board</h2></div>
+    <button type="button" id="board-close" aria-label="Close Message Board">×</button></header>
+    <div id="board-error" role="status">${escape(error)}</div><div id="board-content"></div>`;
   $('#board-close').onclick = closeBoard;
-  if (session) {
-    $('#board-signout').onclick = signOutBoard;
-    if (mode === 'create') renderCreate(); else renderLayout();
-  } else {
-    $('#board-signin').onsubmit = async event => {
-      event.preventDefault();
-      const origin = context?.key, epoch = sessionEpoch;
-      const form = event.currentTarget;
-      const submit = form.querySelector('button');
-      submit.disabled = true;
-      try {
-        const data = await json('/auth/v1/token?grant_type=password', {
-          email: form.elements.email.value.trim(), password: form.elements.password.value,
-        });
-        if (context?.key !== origin || epoch !== sessionEpoch || !dialog.open) return;
-        session = tokens(data);
-        try {
-          await loadConversations();
-        } catch (failure) {
-          if (epoch === sessionEpoch) session = null;
-          throw failure;
-        }
-        if (context?.key !== origin || epoch !== sessionEpoch || !dialog.open || !session) return;
-        error = '';
-        render();
-      } catch (failure) {
-        if (context?.key === origin) showError(failure.message);
-      } finally {
-        form.elements.password.value = '';
-        submit.disabled = false;
-      }
-    };
-  }
+  if (mode === 'create') renderCreate(); else renderLayout();
 }
 
 function showError(message) {
@@ -436,9 +362,9 @@ function renderManage(chat) {
 }
 
 async function loadConversations() {
-  const origin = context?.key, epoch = sessionEpoch;
+  const origin = context?.key, epoch = workspaceEpoch;
   const data = await boardRequest('list');
-  if (context?.key !== origin || !session || epoch !== sessionEpoch) return false;
+  if (context?.key !== origin || epoch !== workspaceEpoch) return false;
   const roleChanged = canManage !== data.manage;
   if (JSON.stringify(conversations) !== JSON.stringify(data.conversations)) {
     conversations = data.conversations;
@@ -451,8 +377,8 @@ async function loadConversations() {
 }
 
 async function refresh() {
-  if (!session || loading || document.hidden) return;
-  const origin = context?.key, epoch = sessionEpoch;
+  if (!context || loading || document.hidden) return;
+  const origin = context?.key, epoch = workspaceEpoch;
   loading = true;
   try {
     if (!await loadConversations() || !dialog?.open || mode !== 'board') return;
@@ -462,7 +388,7 @@ async function refresh() {
       selected = null; posts = []; renderLayout(); return;
     }
     const current = await boardRequest('history', { chat });
-    if (selected !== chat || !dialog.open || context?.key !== origin || epoch !== sessionEpoch) return;
+    if (selected !== chat || !dialog.open || context?.key !== origin || epoch !== workspaceEpoch) return;
     const next = [...new Map([...posts.filter(post => !current.length || post.id < current[0].id), ...current]
       .map(post => [post.id, post])).values()];
     if (JSON.stringify(next) !== JSON.stringify(posts)) {
@@ -476,7 +402,7 @@ async function refresh() {
     }
   } catch (failure) {
     if (context?.key === origin && dialog?.open) showError(failure.message);
-  } finally { if (sessionEpoch === epoch) loading = false; }
+  } finally { if (workspaceEpoch === epoch) loading = false; }
 }
 
 setInterval(() => {
