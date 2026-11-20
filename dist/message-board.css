@@ -85,8 +85,8 @@
 .board-reply-options { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto; align-items: end; gap: 8px; }
 .board-reply-options label { min-width: 0; }
 .board-reply-options button { margin-bottom: 8px; }
-#board-create, #board-edit, #board-signin { max-width: 570px; padding: 16px; }
-#board-create label, #board-edit label, #board-signin label { display: block; margin: 8px 0; }
+#board-create, #board-edit { max-width: 570px; padding: 16px; }
+#board-create label, #board-edit label { display: block; margin: 8px 0; }
 #board-target-options label { padding: 4px; }
 .board-actions { justify-content: flex-end; margin-top: 12px; }
 @media(max-width: 650px) {
